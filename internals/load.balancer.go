@@ -1,6 +1,7 @@
 package internals
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -31,23 +32,23 @@ func (lb *LoadBalancer) GetNextAvailableServer() NodeServer {
 
 		if ok := lb.Servers[serverIdx].IsServerHealthy(); ok {
 			lb.RoundRobinNumber = (serverIdx + 1) % numOfServers
-
 			return lb.Servers[serverIdx]
 		}
-
-		lb.RoundRobinNumber = (serverIdx + 1) % numOfServers
 	}
 
 	return NodeServer{}
 }
 
 func (lb *LoadBalancer) ForwardRequest(server NodeServer, rw http.ResponseWriter, r *http.Request) {
-	addr := server.GetServerAddress()
+
+	addr := fmt.Sprintf("http://%s%s", server.GetServerAddress(), r.URL.Path)
 
 	// Create a new request to forward
 	req, err := http.NewRequest(r.Method, addr, r.Body)
 	if err != nil {
-		// do something
+		fmt.Println(err)
+		fmt.Println("Unable to create Proxy request")
+		return
 	}
 
 	// Copy/Manipulate/Cross original request headerd here
@@ -61,7 +62,9 @@ func (lb *LoadBalancer) ForwardRequest(server NodeServer, rw http.ResponseWriter
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		// do something
+		fmt.Println(err)
+		fmt.Println("Unable to forward request")
+		return
 	}
 
 	// Copy/Manipulate/Cross response headers here for the original request
@@ -74,8 +77,10 @@ func (lb *LoadBalancer) ForwardRequest(server NodeServer, rw http.ResponseWriter
 	//Send the response back
 	rw.WriteHeader(res.StatusCode)
 
-	if _, err = io.Copy(rw, req.Body); err != nil {
-		// do something
+	if _, err = io.Copy(rw, res.Body); err != nil {
+		fmt.Println(err)
+		fmt.Println("Unable to proxy request back to the client")
+		return
 	}
 
 }

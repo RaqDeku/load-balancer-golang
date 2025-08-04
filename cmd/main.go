@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"load-balancer/example/internals"
@@ -16,9 +16,8 @@ func main() {
 		server3,
 	})
 
-	server := lb.GetNextAvailableServer()
-
-	http.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		server := lb.GetNextAvailableServer()
 		lb.ForwardRequest(server, w, r)
 	})
 
